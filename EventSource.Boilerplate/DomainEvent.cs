@@ -1,6 +1,6 @@
 ﻿namespace EventSource.Boilerplate
 {
-	public interface DomainEvent
+	public interface IDomainEvent
 	{
 	}
 }

@@ -1,5 +1,4 @@
-﻿using System.Data.SqlTypes;
-using EventSource.Boilerplate.Events;
+﻿using EventSource.Boilerplate.Events;
 
 namespace EventSource.Boilerplate
 {
@@ -17,7 +16,7 @@ namespace EventSource.Boilerplate
 			Version = snapshot.Version;
 		}
 
-		public override void Apply(DomainEvent changes)
+		public override void Apply(IDomainEvent changes)
 		{
 			When((dynamic) changes);
 			Version = Version++;
@@ -28,7 +27,7 @@ namespace EventSource.Boilerplate
 			Causes(new CreditAdded());
 		}
 
-		public void Causes(DomainEvent @event)
+		public void Causes(IDomainEvent @event)
 		{
 			Changes.Add(@event);
 			Apply(@event);

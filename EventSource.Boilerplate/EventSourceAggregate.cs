@@ -1,18 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace EventSource.Boilerplate
 {
 	public abstract class EventSourceAggregate: Entity
 	{
-		public List<DomainEvent> Changes { get; private set; }
+		public List<IDomainEvent> Changes { get; private set; }
 		public int Version { get; protected set; }
 
 		public EventSourceAggregate()
 		{
-			Changes = new List<DomainEvent>();
+			Changes = new List<IDomainEvent>();
 		}
 
-		public abstract void Apply(DomainEvent changes);
+		public abstract void Apply(IDomainEvent changes);
 	}
 }

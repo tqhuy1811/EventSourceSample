@@ -1,6 +1,6 @@
-﻿namespace EventSource.Boilerplate
+﻿namespace EventSource.Boilerplate.Events
 {
-	public class CreditAdded: DomainEvent
+	public class CreditAdded: IDomainEvent
 	{
 	}
 }
