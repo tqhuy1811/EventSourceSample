@@ -1,10 +1,10 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace EventSource.Boilerplate
 {
 	public interface IPayAsYouGoAccountRepository
 	{
-		
 	}
 
 	public class PayAsYouGoRepository : IPayAsYouGoAccountRepository
@@ -16,37 +16,43 @@ namespace EventSource.Boilerplate
 			_eventStore = eventStore;
 		}
 
-		public void Add(PayAsYouGoAccount payAsYouGoAccount)
+		public async Task Add(PayAsYouGoAccount payAsYouGoAccount)
 		{
 			var streamName = StreamNameFor(payAsYouGoAccount.Id);
-			_eventStore.CreateStreamName(streamName, payAsYouGoAccount.Changes);
+			await _eventStore.CreateNewStreamAsync(streamName, payAsYouGoAccount
+				.Changes);
 		}
 
-		public void Save(PayAsYouGoAccount payAsYouGoAccount)
+		public async Task Save(PayAsYouGoAccount payAsYouGoAccount)
 		{
 			var streamName = StreamNameFor(payAsYouGoAccount.Id);
-			_eventStore.AppendEventsToStream(streamName, payAsYouGoAccount.Changes);
+			await _eventStore.AppendEventsToStreamAsync(streamName,
+				payAsYouGoAccount.Changes);
 		}
 
-		public PayAsYouGoAccount FindBy(Guid id)
+		public async Task<PayAsYouGoAccount> FindBy(Guid id)
 		{
 			var streamName = StreamNameFor(id);
 			var fromEventNumber = 0;
 			var toEventNumber = int.MaxValue;
 			//handling snapshot
-			var snapshot = _eventStore.GetLatestSnapshot<PayAsYouGoAccountSnapshot>(
-				streamName
-			);
-			
+			var snapshot = await _eventStore
+				.GetLatestSnapshotAsync<PayAsYouGoAccountSnapshot>(
+					streamName
+				);
+
 			if (snapshot != null)
 			{
 				// load only events after snapshot
 				fromEventNumber = snapshot.Version + 1;
 			}
 
-			var payAsYouGoAccount = snapshot != null ? new PayAsYouGoAccount(snapshot) : new PayAsYouGoAccount(); 
-			var stream = _eventStore.GetStream(streamName, fromEventNumber, toEventNumber);
-			
+			var payAsYouGoAccount = snapshot != null
+				? new PayAsYouGoAccount(snapshot)
+				: new PayAsYouGoAccount();
+			var stream = await _eventStore.GetStreamAsync(streamName,
+				fromEventNumber, toEventNumber);
+
 			foreach (var @event in stream)
 			{
 				payAsYouGoAccount.Apply(@event);
@@ -57,7 +63,7 @@ namespace EventSource.Boilerplate
 
 		private string StreamNameFor(Guid id)
 		{
-			
+			// stream per aggregate
 			return $"{typeof(PayAsYouGoAccount).Name}-{id}";
 		}
 	}

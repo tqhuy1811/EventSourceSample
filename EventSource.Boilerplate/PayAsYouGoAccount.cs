@@ -1,4 +1,5 @@
-﻿using EventSource.Boilerplate.Events;
+﻿using System;
+using EventSource.Boilerplate.Events;
 
 namespace EventSource.Boilerplate
 {
@@ -6,6 +7,15 @@ namespace EventSource.Boilerplate
 	{
 		private FreeCallAllowance _freeCallAllowance;
 		private Money _credit;
+
+		private PayAsYouGoInclusiveMinutesOffer _InclusiveMinutesOffer =
+			new PayAsYouGoInclusiveMinutesOffer();
+
+		public PayAsYouGoAccount(Guid id,
+			Money credit)
+		{
+			Causes(new AccountCreated(id, credit));
+		}
 
 		public PayAsYouGoAccount()
 		{
@@ -22,9 +32,36 @@ namespace EventSource.Boilerplate
 			Version = Version++;
 		}
 
-		public void Topup(Money credit)
+		public void TopUp(Money credit,
+			IClock clock)
 		{
-			Causes(new CreditAdded());
+			if (_InclusiveMinutesOffer.IsSatisfiedBy(credit))
+				Causes(new CreditSatisfiesFreeCallAllowanceOffer(this.Id,
+					clock.Time(), _InclusiveMinutesOffer.FreeMinutes));
+
+			Causes(new CreditAdded(this.Id, credit));
+		}
+
+		public void Record(
+			PhoneCall phoneCall,
+			PhoneCallCosting phoneCallCosting,
+			IClock clock)
+		{
+			var numberOfMinutesCoveredByAllowance = new Minutes();
+
+			if (_freeCallAllowance != null)
+				numberOfMinutesCoveredByAllowance =
+					_freeCallAllowance.MinutesWhichCanCover(phoneCall, clock);
+
+			var numberOfMinutesToChargeFor =
+				phoneCall.Minutes.Subtract(numberOfMinutesCoveredByAllowance);
+
+			var costOfCall =
+				phoneCallCosting.DetermineCostOfCall(
+					numberOfMinutesToChargeFor);
+
+			Causes(new PhoneCallCharged(this.Id, phoneCall, costOfCall,
+				numberOfMinutesCoveredByAllowance));
 		}
 
 		public void Causes(IDomainEvent @event)
@@ -35,10 +72,31 @@ namespace EventSource.Boilerplate
 
 		private void When(CreditAdded creditAdded)
 		{
+			_credit = _credit.Add(creditAdded.Credit);
+		}
+
+		private void When(
+			CreditSatisfiesFreeCallAllowanceOffer
+				creditSatisfiesFreeCallAllowanceOffer)
+		{
+			_freeCallAllowance = new FreeCallAllowance(
+				creditSatisfiesFreeCallAllowanceOffer.FreeMinutes,
+				creditSatisfiesFreeCallAllowanceOffer.OfferSatisfied);
 		}
 
 		private void When(PhoneCallCharged phoneCallCharged)
 		{
+			_credit = _credit.Subtract(phoneCallCharged.CostOfCall);
+
+			if (_freeCallAllowance != null)
+				_freeCallAllowance.Subtract(phoneCallCharged
+					.CoveredByAllowance);
+		}
+
+		private void When(AccountCreated accountCreated)
+		{
+			Id = accountCreated.Id;
+			_credit = accountCreated.Credit;
 		}
 	}
 }
